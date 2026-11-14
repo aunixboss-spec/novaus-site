@@ -1,1046 +1,1238 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en" class="dark scroll-smooth">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Novaus IDE</title>
-  <meta name="description" content="Лёгкая настольная IDE с AI-агентом и встроенным декомпилятором." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>novaus — Your code. Your agent. One workspace.</title>
 
-  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-  <link rel="shortcut icon" href="/favicon.ico" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-  <link rel="manifest" href="/site.webmanifest" />
+  <!-- Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Three.js r128 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            void: '#000000',
+            ice: '#dce4ff',
+            silver: '#f2f2f5',
+          },
+        },
+      },
+    };
+  </script>
 
   <style>
-    @font-face {
-      font-family: "SF Pro Display";
-      font-style: normal;
-      font-weight: 400;
-      font-display: swap;
-      src: url("https://cdn.jsdelivr.net/npm/sf-pro@1.0.3/font/woff2/sf-pro-display_regular.woff2") format("woff2");
-    }
-    @font-face {
-      font-family: "SF Pro Display";
-      font-style: normal;
-      font-weight: 500;
-      font-display: swap;
-      src: url("https://cdn.jsdelivr.net/npm/sf-pro@1.0.3/font/woff2/sf-pro-display_medium.woff2") format("woff2");
-    }
-    @font-face {
-      font-family: "SF Pro Display";
-      font-style: normal;
-      font-weight: 600;
-      font-display: swap;
-      src: url("https://cdn.jsdelivr.net/npm/sf-pro@1.0.3/font/woff2/sf-pro-display_semibold.woff2") format("woff2");
-    }
-    @font-face {
-      font-family: "SF Pro Display";
-      font-style: normal;
-      font-weight: 700;
-      font-display: swap;
-      src: url("https://cdn.jsdelivr.net/npm/sf-pro@1.0.3/font/woff2/sf-pro-display_bold.woff2") format("woff2");
-    }
-
-    :root {
-      --bg: #000000;
-      --surface: #1c1c1e;
-      --surface-2: #2c2c2e;
-      --surface-3: #3a3a3c;
-      --separator: rgba(84, 84, 88, 0.65);
-      --label: #ffffff;
-      --secondary: rgba(235, 235, 245, 0.6);
-      --tertiary: rgba(235, 235, 245, 0.3);
-      --accent: #ffffff;
-      --radius: 20px;
-      --radius-sm: 12px;
-      --radius-pill: 980px;
-      --font: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
-      --mono: ui-monospace, "SF Mono", Menlo, Monaco, monospace;
-    }
-
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-
-    body {
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--label);
-      line-height: 1.47059;
+    * {
+      box-sizing: border-box;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #000000;
+      color: #f2f2f5;
+      font-family: 'Inter', sans-serif;
       overflow-x: hidden;
-      letter-spacing: -0.022em;
     }
 
-    a { color: inherit; text-decoration: none; }
-
-    .icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-    .icon svg {
-      width: 100%;
-      height: 100%;
-      fill: none;
-      stroke: currentColor;
-      stroke-width: 1.8;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-    .dl-icon .icon svg {
-      fill: currentColor;
-      stroke: none;
-    }
-
-    nav {
+    /* Fixed 3D WebGL Canvas */
+    #webgl-container {
       position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 100;
-      height: 52px;
-      display: flex;
-      align-items: center;
-      background: rgba(0, 0, 0, 0.72);
-      backdrop-filter: saturate(180%) blur(20px);
-      -webkit-backdrop-filter: saturate(180%) blur(20px);
-      border-bottom: 0.5px solid var(--separator);
-    }
-    .nav-inner {
-      width: 100%;
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 0 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 600;
-      font-size: 17px;
-      letter-spacing: -0.022em;
-    }
-    .logo-mark {
-      width: 28px;
-      height: 28px;
-      background: #ffffff;
-      border-radius: 8px;
-      display: grid;
-      place-items: center;
-      font-family: var(--mono);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: -0.05em;
-      color: #000000;
-    }
-    .nav-links {
-      display: flex;
-      gap: 22px;
-      list-style: none;
-    }
-    .nav-links a {
-      font-size: 15px;
-      font-weight: 400;
-      color: var(--secondary);
-      transition: color 0.2s;
-    }
-    .nav-links a:hover { color: var(--label); }
-    .nav-cta {
-      font-size: 15px;
-      font-weight: 600;
-      color: #ffffff;
-      letter-spacing: -0.01em;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      pointer-events: none;
     }
 
-    .hero {
-      padding: 120px 20px 72px;
-      max-width: 980px;
-      margin: 0 auto;
-      text-align: center;
-    }
-    .hero-eyebrow {
-      font-size: 15px;
-      font-weight: 600;
-      color: #ffffff;
-      letter-spacing: -0.01em;
-      margin-bottom: 12px;
-    }
-    h1 {
-      font-size: clamp(40px, 8vw, 56px);
-      font-weight: 700;
-      letter-spacing: -0.03em;
-      line-height: 1.07;
-      margin-bottom: 16px;
-      max-width: 680px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .hero-sub {
-      font-size: 19px;
-      font-weight: 400;
-      color: var(--secondary);
-      max-width: 460px;
-      margin: 0 auto 32px;
-      line-height: 1.42;
-      letter-spacing: -0.02em;
-    }
-    .hero-actions {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin-bottom: 28px;
-    }
-    .hero-meta {
-      font-size: 13px;
-      color: var(--tertiary);
-      letter-spacing: -0.01em;
+    /* Subtle radial vignette so edges merge cleanly into pure #000000 */
+    .vignette-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 50% 48%, rgba(0, 0, 0, 0.12) 0%, rgba(0, 0, 0, 0.56) 64%, #000000 94%);
     }
 
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      font-family: inherit;
-      font-size: 17px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      padding: 12px 22px;
-      border-radius: var(--radius-pill);
-      border: none;
-      cursor: pointer;
-      transition: opacity 0.2s, transform 0.15s;
-    }
-    .btn:active { transform: scale(0.97); opacity: 0.85; }
-    .btn .icon { width: 18px; height: 18px; }
-    .btn-primary { background: #ffffff; color: #000000; }
-    .btn-secondary { background: var(--surface-2); color: var(--label); }
-
-    section {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 0 20px 88px;
-    }
-    .section-label {
-      font-size: 13px;
-      font-weight: 600;
-      color: #ffffff;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-bottom: 8px;
-    }
-    .section-title {
-      font-size: 28px;
-      font-weight: 700;
-      letter-spacing: -0.025em;
-      line-height: 1.15;
-      margin-bottom: 8px;
-    }
-    .section-desc {
-      font-size: 17px;
-      font-weight: 400;
-      color: var(--secondary);
-      letter-spacing: -0.02em;
-      margin-bottom: 28px;
-      max-width: 520px;
-      line-height: 1.45;
+    /* Clean dark radial cushion behind Hero text for razor-sharp readability */
+    .hero-readability-glow {
+      background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.64) 0%, rgba(0, 0, 0, 0.28) 55%, rgba(0, 0, 0, 0) 80%);
     }
 
-    .group {
-      background: var(--surface);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-    .row {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 14px 16px;
-      min-height: 60px;
-      border-bottom: 0.5px solid var(--separator);
-    }
-    .row:last-child { border-bottom: none; }
-    .row-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
-      background: #ffffff;
-      display: grid;
-      place-items: center;
-      color: #000000;
-      flex-shrink: 0;
-    }
-    .row-icon.gray { background: var(--surface-3); color: #ffffff; }
-    .row-icon .icon { width: 18px; height: 18px; }
-    .row-body { flex: 1; min-width: 0; }
-    .row-title {
-      font-size: 17px;
-      font-weight: 400;
-      letter-spacing: -0.02em;
-      color: var(--label);
-    }
-    .row-sub {
-      font-size: 15px;
-      font-weight: 400;
-      color: var(--secondary);
-      letter-spacing: -0.01em;
-      margin-top: 1px;
+    /* Fine analog monochrome film grain */
+    .film-grain {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      opacity: 0.028;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.88' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     }
 
-    .feature { margin-bottom: 16px; }
-    .feature-card {
-      background: var(--surface);
-      border-radius: var(--radius);
-      padding: 28px 24px;
-      margin-top: 20px;
+    /* Primary ice-white/lavender button */
+    .btn-ice {
+      background-color: #dbe3ff;
+      color: #050507;
+      border: 1px solid #dbe3ff;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .feature-card .code {
-      font-family: var(--mono);
-      font-size: 14px;
-      line-height: 1.65;
-      color: var(--secondary);
-      letter-spacing: 0;
-    }
-    .feature-card .kw { color: #ffffff; }
-    .feature-card .fn { color: #c7c7cc; }
-    .feature-card .str { color: #8e8e93; }
-    .feature-list {
-      list-style: none;
-      margin-top: 18px;
-    }
-    .feature-list li {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      font-size: 15px;
-      color: var(--secondary);
-      padding: 7px 0;
-      letter-spacing: -0.01em;
-      line-height: 1.4;
-    }
-    .feature-list li .icon {
-      width: 18px;
-      height: 18px;
-      color: #ffffff;
-      margin-top: 1px;
-      flex-shrink: 0;
+    .btn-ice:hover {
+      background-color: #ffffff;
+      border-color: #ffffff;
+      box-shadow: 0 0 26px rgba(219, 227, 255, 0.26);
     }
 
-    .fmt-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 16px;
+    /* Secondary dark glass button */
+    .btn-dark {
+      background-color: rgba(0, 0, 0, 0.62);
+      color: #f2f2f5;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(8px);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .fmt {
-      background: var(--surface-2);
-      border-radius: var(--radius-sm);
-      padding: 16px;
-      text-align: center;
-    }
-    .fmt-ext {
-      font-size: 17px;
-      font-weight: 600;
-      color: var(--label);
-      letter-spacing: -0.02em;
-    }
-    .fmt-name {
-      font-size: 13px;
-      color: var(--tertiary);
-      margin-top: 2px;
+    .btn-dark:hover {
+      background-color: rgba(255, 255, 255, 0.07);
+      border-color: rgba(255, 255, 255, 0.42);
     }
 
-    .steps {
-      display: grid;
-      gap: 10px;
-      margin-top: 8px;
-    }
-    .step {
-      background: var(--surface);
-      border-radius: var(--radius);
-      padding: 20px 20px;
-      display: flex;
-      gap: 16px;
-      align-items: flex-start;
-    }
-    .step-num {
-      width: 32px;
-      height: 32px;
-      border-radius: 10px;
-      background: #ffffff;
-      color: #000;
-      font-size: 15px;
-      font-weight: 700;
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
-    }
-    .step h3 {
-      font-size: 17px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      margin-bottom: 4px;
-    }
-    .step p {
-      font-size: 15px;
-      color: var(--secondary);
-      line-height: 1.45;
-      letter-spacing: -0.01em;
+    /* Permanent ice highlight — same palette as text selection (#dbe3ff + black).
+       inline-block + nowrap: the phrase never splits across lines, so the
+       highlight is always one clean, evenly padded rectangle */
+    .hl {
+      display: inline-block;
+      background-color: #dbe3ff;
+      color: #050507;
+      padding: 0.06em 0.3em;
+      border-radius: 2px;
+      white-space: nowrap;
+      line-height: 1.2;
+      vertical-align: baseline;
     }
 
-    .two-col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-    .info-card {
-      background: var(--surface);
-      border-radius: var(--radius);
-      padding: 22px;
-    }
-    .info-card h3 {
-      font-size: 17px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      margin-bottom: 8px;
-    }
-    .info-card p, .info-card li {
-      font-size: 15px;
-      color: var(--secondary);
-      line-height: 1.45;
-      letter-spacing: -0.01em;
-    }
-    .info-card ul {
-      list-style: none;
-      margin-top: 8px;
-    }
-    .info-card li {
-      padding: 4px 0;
-      padding-left: 14px;
-      position: relative;
-    }
-    .info-card li::before {
-      content: "";
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: var(--tertiary);
-      position: absolute;
-      left: 0;
-      top: 11px;
+    /* Preloader circular stroke animation */
+    @keyframes progressRing {
+      0% {
+        stroke-dashoffset: 251.2;
+      }
+      100% {
+        stroke-dashoffset: 0;
+      }
     }
 
-    .faq-item {
-      border-bottom: 0.5px solid var(--separator);
-    }
-    .faq-item:last-child { border-bottom: none; }
-    .faq-q {
-      width: 100%;
-      background: none;
-      border: none;
-      color: var(--label);
-      font-family: inherit;
-      font-size: 17px;
-      font-weight: 400;
-      letter-spacing: -0.02em;
-      text-align: left;
-      padding: 18px 16px;
-      cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-    }
-    .faq-q .chev {
-      width: 16px;
-      height: 16px;
-      color: var(--tertiary);
-      transition: transform 0.2s;
-      flex-shrink: 0;
-    }
-    .faq-item.open .faq-q .chev { transform: rotate(180deg); }
-    .faq-a {
-      display: none;
-      padding: 0 16px 18px;
-      font-size: 15px;
-      color: var(--secondary);
-      line-height: 1.5;
-      letter-spacing: -0.01em;
-    }
-    .faq-item.open .faq-a { display: block; }
-
-    .roadmap {
-      background: var(--surface);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-    .road-item {
-      display: flex;
-      gap: 14px;
-      padding: 16px;
-      border-bottom: 0.5px solid var(--separator);
-      align-items: flex-start;
-    }
-    .road-item:last-child { border-bottom: none; }
-    .road-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #ffffff;
-      margin-top: 6px;
-      flex-shrink: 0;
-    }
-    .road-dot.soon {
-      background: transparent;
-      border: 1.5px solid var(--tertiary);
-    }
-    .road-title {
-      font-size: 16px;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      margin-bottom: 2px;
-    }
-    .road-sub {
-      font-size: 14px;
-      color: var(--secondary);
-      line-height: 1.4;
-    }
-    .road-tag {
-      font-size: 12px;
-      color: var(--tertiary);
-      margin-top: 4px;
+    .preloader-circle {
+      stroke-dasharray: 251.2;
+      stroke-dashoffset: 251.2;
+      animation: progressRing 0.8s cubic-bezier(0.65, 0, 0.35, 1) forwards;
     }
 
-    .download {
-      padding: 48px 20px 64px;
-      text-align: center;
+    /* Smooth scroll reveal */
+    .reveal {
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1), transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .download .section-title { margin-bottom: 6px; }
-    .download .section-desc {
-      margin-left: auto;
-      margin-right: auto;
-      margin-bottom: 28px;
+    .reveal.reveal-pending {
+      opacity: 0;
+      transform: translateY(18px);
     }
-    .dl-stack {
-      max-width: 420px;
-      margin: 0 auto;
-      background: var(--surface);
-      border-radius: var(--radius);
-      overflow: hidden;
-      text-align: left;
-    }
-    .dl-row {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 16px;
-      border-bottom: 0.5px solid var(--separator);
-    }
-    .dl-row:last-child { border-bottom: none; }
-    .dl-row.ready:hover { background: rgba(255,255,255,0.03); }
-    .dl-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      background: var(--surface-2);
-      display: grid;
-      place-items: center;
-      color: var(--label);
-      flex-shrink: 0;
-    }
-    .dl-icon .icon { width: 20px; height: 20px; }
-    .dl-body { flex: 1; }
-    .dl-name {
-      font-size: 17px;
-      font-weight: 400;
-      letter-spacing: -0.02em;
-    }
-    .dl-meta {
-      font-size: 13px;
-      color: var(--tertiary);
-      margin-top: 1px;
-    }
-    .dl-action {
-      font-size: 15px;
-      font-weight: 600;
-      color: #ffffff;
-    }
-    .dl-action.disabled {
-      color: var(--tertiary);
-      font-weight: 400;
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
     }
 
-    footer {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 32px 20px 48px;
-      border-top: 0.5px solid var(--separator);
+    /* Custom minimal scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
     }
-    .footer-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 32px;
-      flex-wrap: wrap;
-      margin-bottom: 28px;
+    ::-webkit-scrollbar-track {
+      background: #000000;
     }
-    .footer-brand .logo { margin-bottom: 8px; }
-    .footer-brand p {
-      font-size: 13px;
-      color: var(--tertiary);
-      max-width: 240px;
-      line-height: 1.4;
-    }
-    .footer-cols { display: flex; gap: 40px; }
-    .footer-col h4 {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--secondary);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-bottom: 10px;
-    }
-    .footer-col a {
-      display: block;
-      font-size: 15px;
-      color: var(--tertiary);
-      margin-bottom: 8px;
-      transition: color 0.15s;
-    }
-    .footer-col a:hover { color: var(--secondary); }
-    .footer-bottom {
-      font-size: 12px;
-      color: var(--tertiary);
-      letter-spacing: -0.01em;
-    }
-
-    @media (max-width: 700px) {
-      .nav-links { display: none; }
-      h1 { font-size: 36px; }
-      .fmt-grid, .two-col { grid-template-columns: 1fr; }
-      .section-title { font-size: 24px; }
+    ::-webkit-scrollbar-thumb {
+      background: #222226;
+      border-radius: 3px;
     }
   </style>
 </head>
-<body>
+<body class="bg-black text-[#f2f2f5] selection:bg-[#dbe3ff] selection:text-black">
 
-<nav>
-  <div class="nav-inner">
-    <a href="#" class="logo">
-      <div class="logo-mark">&lt;/&gt;</div>
-      Novaus
+  <!-- ==================== 1. PRELOADER: CIRCLE WITH </> LOGO ==================== -->
+  <div id="preloader" class="fixed inset-0 z-50 flex items-center justify-center bg-black transition-opacity duration-700">
+    <div class="relative flex items-center justify-center w-24 h-24">
+      <svg class="w-24 h-24 -rotate-90" viewBox="0 0 90 90">
+        <circle
+          cx="45"
+          cy="45"
+          r="40"
+          stroke="rgba(255, 255, 255, 0.14)"
+          stroke-width="1.5"
+          fill="none"
+        />
+        <circle
+          cx="45"
+          cy="45"
+          r="40"
+          stroke="#f2f2f5"
+          stroke-width="1.75"
+          stroke-linecap="round"
+          fill="none"
+          class="preloader-circle"
+        />
+      </svg>
+      <span class="absolute font-mono text-lg font-normal tracking-tight text-[#f2f2f5] select-none">
+        &lt;/&gt;
+      </span>
+    </div>
+  </div>
+
+  <!-- ==================== FIXED 3D CRYSTAL MONOLITH CANVAS ==================== -->
+  <div id="webgl-container"></div>
+  <div class="vignette-layer"></div>
+  <div class="film-grain"></div>
+
+  <!-- ==================== DOWNLOAD MODAL ==================== -->
+  <div id="download-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-md p-4">
+    <div class="w-full max-w-md bg-[#070709] border border-white/15 rounded-lg p-6 sm:p-8 shadow-2xl">
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-2.5">
+          <span class="font-mono text-xs text-zinc-400">&lt;/&gt;</span>
+          <span class="text-sm font-medium tracking-tight text-white">Download Novaus IDE</span>
+        </div>
+        <button onclick="closeDownloadModal()" class="text-zinc-500 hover:text-white font-mono text-xs px-2 py-1">
+          ESC
+        </button>
+      </div>
+
+      <p class="text-xs text-zinc-400 font-mono leading-relaxed mb-6">
+        v1.0.0 &middot; MIT Open Source &middot; Local-first desktop build
+      </p>
+
+      <div class="space-y-2.5">
+        <button onclick="startDownload('Windows x64 (.exe)')" class="btn-ice w-full py-3 px-4 rounded text-xs font-mono font-medium flex items-center justify-between">
+          <span>Windows (x64 Installer)</span>
+          <span>68 MB &darr;</span>
+        </button>
+        <button onclick="startDownload('macOS Apple Silicon (.dmg)')" class="btn-dark w-full py-3 px-4 rounded text-xs font-mono flex items-center justify-between">
+          <span>macOS (Universal .dmg)</span>
+          <span>72 MB &darr;</span>
+        </button>
+        <button onclick="startDownload('Linux x86_64 (.AppImage)')" class="btn-dark w-full py-3 px-4 rounded text-xs font-mono flex items-center justify-between">
+          <span>Linux (AppImage / .deb)</span>
+          <span>65 MB &darr;</span>
+        </button>
+      </div>
+
+      <div id="download-status" class="mt-4 hidden font-mono text-[11px] text-[#dbe3ff] border-t border-white/10 pt-3"></div>
+    </div>
+  </div>
+
+  <!-- ==================== MINIMAL TOP HEADER ==================== -->
+  <header class="fixed top-0 left-0 right-0 z-40 px-6 sm:px-10 py-5 flex items-center justify-between pointer-events-none">
+    <a href="#" class="pointer-events-auto text-lg sm:text-xl font-normal tracking-[-0.02em] text-white">
+      novaus
     </a>
-    <ul class="nav-links">
-      <li><a href="#features">Features</a></li>
-      <li><a href="#ai">AI</a></li>
-      <li><a href="#decompiler">Decompiler</a></li>
-      <li><a href="#faq">FAQ</a></li>
-    </ul>
-    <a href="#download" class="nav-cta">Download</a>
-  </div>
-</nav>
 
-<header class="hero">
-  <h1>Lightweight IDE<br>with a real AI agent</h1>
-  <p class="hero-sub">Monaco editor. Built-in terminal. One-click run. Offline decompiler. Session memory. All in one focused desktop app.</p>
-  <div class="hero-actions">
-    <a href="#download" class="btn btn-primary">
-      Download for Windows
-      <span class="icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg></span>
-    </a>
-    <a href="https://github.com/aunixboss-spec/Novaus-IDE" target="_blank" class="btn btn-secondary">GitHub</a>
-  </div>
-</header>
+    <button
+      onclick="openDownloadModal()"
+      class="pointer-events-auto btn-ice px-5 py-2.5 rounded-[4px] font-mono text-xs font-medium tracking-wide"
+    >
+      Download
+    </button>
+  </header>
 
-<section id="features">
-  <p class="section-label">Core</p>
-  <h2 class="section-title">Everything you need</h2>
-  <p class="section-desc">A focused toolkit for writing, running and inspecting code — without the weight of a full enterprise IDE.</p>
+  <!-- ==================== MAIN SCROLLABLE PAGE ==================== -->
+  <main class="relative z-10">
 
-  <div class="group">
-    <div class="row">
-      <div class="row-icon">
-        <span class="icon"><svg viewBox="0 0 24 24"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg></span>
-      </div>
-      <div class="row-body">
-        <div class="row-title">Monaco Editor</div>
-        <div class="row-sub">Same engine as VS Code · syntax for 25+ languages · tabs · unsaved indicators</div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="row-icon gray">
-        <span class="icon"><svg viewBox="0 0 24 24"><path d="M4 17l6-6-6-6M12 19h8"/></svg></span>
-      </div>
-      <div class="row-body">
-        <div class="row-title">Built-in Terminal</div>
-        <div class="row-sub">Opens in the project folder · command history with arrow keys</div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="row-icon">
-        <span class="icon"><svg viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg></span>
-      </div>
-      <div class="row-body">
-        <div class="row-title">Run with F5</div>
-        <div class="row-sub">Python &amp; Node.js · live streamed output · no config files needed</div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="row-icon gray">
-        <span class="icon"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg></span>
-      </div>
-      <div class="row-body">
-        <div class="row-title">Project Explorer</div>
-        <div class="row-sub">Real filesystem · create, rename, delete files and folders instantly</div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="row-icon">
-        <span class="icon"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg></span>
-      </div>
-      <div class="row-body">
-        <div class="row-title">Session Memory</div>
-        <div class="row-sub">Restores open project, tabs, terminal history and AI chat on launch</div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="row-icon gray">
-        <span class="icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
-      </div>
-      <div class="row-body">
-        <div class="row-title">Local by default</div>
-        <div class="row-sub">API keys stay on your machine · nothing leaves without your call</div>
-      </div>
-    </div>
-  </div>
-</section>
+    <!-- SECTION 1: HERO -->
+    <section id="hero" class="min-h-screen flex flex-col items-center justify-center text-center px-5 pt-16 pb-12">
+      <div class="hero-readability-glow max-w-3xl mx-auto px-6 py-10 rounded-3xl flex flex-col items-center">
+        <h1 class="text-4xl sm:text-6xl md:text-[64px] font-normal tracking-[-0.035em] leading-[1.08] text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.98)]">
+          Your code. Your agent.<br />
+          One workspace.
+        </h1>
 
-<section id="start">
-  <p class="section-label">Getting started</p>
-  <h2 class="section-title">Up in three steps</h2>
-  <p class="section-desc">Download and open a folder.</p>
-  <div class="steps">
-    <div class="step">
-      <div class="step-num">1</div>
-      <div>
-        <h3>Download the installer</h3>
-        <p>Grab the Windows .exe from GitHub Releases. macOS and Linux builds are on the roadmap.</p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <div>
-        <h3>Open a project</h3>
-        <p>Point Novaus at any folder. The explorer, terminal and editor share the same workspace.</p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <div>
-        <h3>Write, run, ask the agent</h3>
-        <p>Edit in Monaco, press F5 to run, or connect an API key and let the agent edit files and run commands.</p>
-      </div>
-    </div>
-  </div>
-</section>
+        <p class="mt-5 max-w-md font-mono text-xs sm:text-[13px] leading-[1.7] text-zinc-200 drop-shadow-[0_2px_14px_rgba(0,0,0,0.98)]">
+          A lightweight IDE for focused editing,<br class="hidden sm:inline" />
+          capable AI, and <span class="hl">local-first</span> development.
+        </p>
 
-<section id="ai" class="feature">
-  <p class="section-label">AI Copilot</p>
-  <h2 class="section-title">An agent that acts</h2>
-  <p class="section-desc">Connect any OpenAI-compatible endpoint. The agent doesn’t only chat — it can read your project, write files and run terminal commands.</p>
+        <div class="mt-8 flex flex-row items-center justify-center gap-3">
+          <button
+            onclick="openDownloadModal()"
+            class="btn-ice px-6 py-3 rounded-[4px] font-mono text-[11px] font-medium uppercase tracking-[0.12em]"
+          >
+            DOWNLOAD
+          </button>
+          <a
+            href="#workbench"
+            class="btn-dark px-6 py-3 rounded-[4px] font-mono text-[11px] uppercase tracking-[0.12em]"
+          >
+            LEARN MORE
+          </a>
+        </div>
+      </div>
+    </section>
 
-  <div class="feature-card">
-    <div class="code">
-      <div><span class="kw">await</span> agent.<span class="fn">readFile</span>(<span class="str">"src/auth.ts"</span>)</div>
-      <div><span class="kw">await</span> agent.<span class="fn">editFile</span>(path, changes)</div>
-      <div><span class="kw">await</span> agent.<span class="fn">run</span>(<span class="str">"npm test"</span>)</div>
-      <div style="margin-top:12px;color:var(--label)">12 tests passed</div>
-    </div>
-    <ul class="feature-list">
-      <li>
-        <span class="icon"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
-        Works with Groq, OpenRouter, OpenAI and other compatible APIs
-      </li>
-      <li>
-        <span class="icon"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
-        One-click API key check and model list fetch
-      </li>
-      <li>
-        <span class="icon"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
-        Insert suggested code blocks straight into the active editor
-      </li>
-      <li>
-        <span class="icon"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
-        Agent mode: read files, write changes, execute shell commands
-      </li>
-      <li>
-        <span class="icon"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
-        Chat history is restored with the rest of your session
-      </li>
-    </ul>
-  </div>
-</section>
+    <!-- SECTION 2: "Less setup. More building." + 3 PILLARS -->
+    <section id="workbench" class="py-24 sm:py-32 px-5 sm:px-10 max-w-6xl mx-auto reveal">
+      <h2 class="text-4xl sm:text-6xl font-normal tracking-[-0.03em] leading-[1.08] text-[#f2f2f5] mb-12 sm:mb-14">
+        Less setup.<br />
+        More building.
+      </h2>
 
-<section id="decompiler" class="feature">
-  <p class="section-label">Decompiler</p>
-  <h2 class="section-title">Built-in, offline</h2>
-  <p class="section-desc">Most IDEs stop at source. Novaus can open common binary formats and show you readable output — without installing separate reverse-engineering tools for everyday formats.</p>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-10 sm:gap-12">
+        <div>
+          <div class="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 mb-3">
+            01 / EDIT
+          </div>
+          <h3 class="text-base sm:text-lg font-medium text-white mb-2.5">
+            A familiar place to build.
+          </h3>
+          <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+            Monaco-powered editing, project explorer, an integrated terminal, and F5 to run Python or Node.js.
+          </p>
+        </div>
 
-  <div class="feature-card">
-    <div class="fmt-grid">
-      <div class="fmt">
-        <div class="fmt-ext">.wasm</div>
-        <div class="fmt-name">WebAssembly → WAT</div>
-      </div>
-      <div class="fmt">
-        <div class="fmt-ext">.class</div>
-        <div class="fmt-name">Java → javap / CFR</div>
-      </div>
-      <div class="fmt">
-        <div class="fmt-ext">.pyc</div>
-        <div class="fmt-name">Python bytecode</div>
-      </div>
-      <div class="fmt">
-        <div class="fmt-ext">.dll / .exe</div>
-        <div class="fmt-name">.NET → ILSpy</div>
-      </div>
-    </div>
-    <ul class="feature-list">
-      <li>
-        <span class="icon"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
-        WABT tools for wasm are bundled — works offline
-      </li>
-      <li>
-        <span class="icon"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></span>
-        Useful for quick inspection, learning and debugging shipped artifacts
-      </li>
-    </ul>
-  </div>
-</section>
+        <div>
+          <div class="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 mb-3">
+            02 / COLLABORATE
+          </div>
+          <h3 class="text-base sm:text-lg font-medium text-white mb-2.5">
+            An agent, not just a chat.
+          </h3>
+          <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+            Connect your preferred AI provider. Read files, make edits, and execute commands without leaving your project.
+          </p>
+        </div>
 
-<section id="why">
-  <p class="section-label">Why Novaus</p>
-  <h2 class="section-title">Small surface, real power</h2>
-  <p class="section-desc">Built for people who want an editor, a terminal, an agent and a decompiler in one place — not another 2 GB suite.</p>
-  <div class="two-col">
-    <div class="info-card">
-      <h3>What you get</h3>
-      <ul>
-        <li>Monaco-based editing experience</li>
-        <li>Integrated terminal and F5 run</li>
-        <li>AI agent with file + shell tools</li>
-        <li>Offline decompiler for common formats</li>
-        <li>Session restore on every launch</li>
-        <li>MIT license</li>
-      </ul>
-    </div>
-    <div class="info-card">
-      <h3>What you don’t</h3>
-      <ul>
-        <li>Account walls for basic editing</li>
-        <li>Heavy plugin ecosystems to configure first</li>
-        <li>Cloud lock-in for basic editing</li>
-        <li>Separate apps for decompile + chat + run</li>
-      </ul>
-    </div>
-  </div>
-</section>
+        <div>
+          <div class="font-mono text-[10px] uppercase tracking-[0.18em] text-zinc-500 mb-3">
+            03 / UNDERSTAND
+          </div>
+          <h3 class="text-base sm:text-lg font-medium text-white mb-2.5">
+            Go beyond the source.
+          </h3>
+          <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+            Inspect WebAssembly, Java, Python bytecode, and .NET with built-in decompilation and local tooling.
+          </p>
+        </div>
+      </div>
+    </section>
 
-<section id="roadmap">
-  <p class="section-label">Roadmap</p>
-  <h2 class="section-title">What’s next</h2>
-  <p class="section-desc">v1.0 ships Windows today. Cross-platform and deeper AI are the priority.</p>
-  <div class="roadmap">
-    <div class="road-item">
-      <div class="road-dot"></div>
-      <div>
-        <div class="road-title">Windows release</div>
-        <div class="road-sub">Installer, Monaco, terminal, F5, AI agent, decompiler, session memory</div>
-        <div class="road-tag">Shipped · v1.0</div>
-      </div>
-    </div>
-    <div class="road-item">
-      <div class="road-dot soon"></div>
-      <div>
-        <div class="road-title">macOS &amp; Linux builds</div>
-        <div class="road-sub">Native packages so the same workflow runs on every desktop</div>
-        <div class="road-tag">In progress</div>
-      </div>
-    </div>
-    <div class="road-item">
-      <div class="road-dot soon"></div>
-      <div>
-        <div class="road-title">Stronger AI agent</div>
-        <div class="road-sub">Better tool use, multi-file edits, clearer diffs and safer command confirmations</div>
-        <div class="road-tag">Planned</div>
-      </div>
-    </div>
-    <div class="road-item">
-      <div class="road-dot soon"></div>
-      <div>
-        <div class="road-title">Decompiler upgrades</div>
-        <div class="road-sub">More formats, cleaner output, better navigation from binary back to project context</div>
-        <div class="road-tag">Planned</div>
-      </div>
-    </div>
-  </div>
-</section>
+    <!-- SECTION 3: "Built for focus. Designed for control." -->
+    <section id="focus" class="min-h-[85vh] py-28 sm:py-36 px-5 sm:px-10 max-w-6xl mx-auto flex items-center reveal">
+      <div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+        <div class="lg:col-span-6">
+          <h2 class="text-4xl sm:text-6xl font-normal tracking-[-0.03em] leading-[1.08] text-[#f2f2f5]">
+            Built for focus.<br />
+            Designed<br />
+            for control.
+          </h2>
+        </div>
 
-<section id="requirements">
-  <p class="section-label">Requirements</p>
-  <h2 class="section-title">System</h2>
-  <p class="section-desc">Lightweight desktop app. No server required.</p>
-  <div class="two-col">
-    <div class="info-card">
-      <h3>Windows (available)</h3>
-      <ul>
-        <li>Windows 10 or 11, x64</li>
-        <li>~99 MB installer</li>
-        <li>Python / Node.js optional for F5 run</li>
-        <li>Internet only if you use cloud AI APIs</li>
-      </ul>
-    </div>
-    <div class="info-card">
-      <h3>macOS &amp; Linux</h3>
-      <ul>
-        <li>Builds coming soon</li>
-        <li>Same feature set planned</li>
-        <li>Track progress on GitHub</li>
-      </ul>
-    </div>
-  </div>
-</section>
+        <div class="lg:col-span-6 lg:pl-8">
+          <p class="text-sm sm:text-base text-zinc-400 leading-relaxed max-w-lg">
+            Your files stay on your machine. Your API keys stay local. Editing, running, and inspecting code shouldn’t require an account—or a cloud subscription.
+          </p>
+          <p class="mt-5 text-sm sm:text-base font-medium text-white">
+            Open source. MIT licensed. <span class="hl">Yours to explore.</span>
+          </p>
+        </div>
+      </div>
+    </section>
 
-<section id="faq">
-  <p class="section-label">FAQ</p>
-  <h2 class="section-title">Questions</h2>
-  <p class="section-desc">Short answers. More detail lives in the repo.</p>
-  <div class="group">
-    <div class="faq-item">
-      <button class="faq-q" type="button">
-        Is Novaus free?
-        <span class="chev icon"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>
-      </button>
-      <div class="faq-a">Novaus is released under the MIT license.</div>
-    </div>
-    <div class="faq-item">
-      <button class="faq-q" type="button">
-        Do I need an account?
-        <span class="chev icon"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>
-      </button>
-      <div class="faq-a">No. Install and open a folder. The editor, terminal and decompiler work fully offline after install.</div>
-    </div>
-    <div class="faq-item">
-      <button class="faq-q" type="button">
-        How does the AI work?
-        <span class="chev icon"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>
-      </button>
-      <div class="faq-a">You paste an API key for any OpenAI-compatible provider. Keys stay local. In agent mode the model can read files, propose edits and run terminal commands in your project.</div>
-    </div>
-    <div class="faq-item">
-      <button class="faq-q" type="button">
-        Does the decompiler need the internet?
-        <span class="chev icon"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>
-      </button>
-      <div class="faq-a">No for bundled wasm tooling. Other formats use local tooling where available. Nothing is uploaded for decompilation.</div>
-    </div>
-    <div class="faq-item">
-      <button class="faq-q" type="button">
-        When are Mac and Linux builds coming?
-        <span class="chev icon"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>
-      </button>
-      <div class="faq-a">They are actively planned after the Windows v1.0 baseline. Watch the GitHub repository for releases.</div>
-    </div>
-    <div class="faq-item">
-      <button class="faq-q" type="button">
-        Where do I report bugs?
-        <span class="chev icon"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span>
-      </button>
-      <div class="faq-a">Open an issue on GitHub. Include OS, version and steps to reproduce when possible.</div>
-    </div>
-  </div>
-</section>
+    <!-- SECTION 4: "From download to deep work." & FOOTER -->
+    <section id="deep-work" class="pt-20 pb-14 px-5 sm:px-10 max-w-6xl mx-auto reveal">
+      <h2 class="text-4xl sm:text-6xl font-normal tracking-[-0.03em] leading-[1.08] text-[#f2f2f5] mb-12 sm:mb-16">
+        From download to <span class="hl">deep work.</span>
+      </h2>
 
-<div class="download" id="download">
-  <h2 class="section-title">Download</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="p-7 sm:p-8 rounded-[6px] border border-white/[0.11] bg-black/75 backdrop-blur-sm hover:border-white/25 transition-colors flex flex-col justify-between min-h-[220px]">
+          <div class="font-mono text-xs text-zinc-500">01</div>
+          <div class="mt-8">
+            <h3 class="text-base sm:text-lg font-medium text-white mb-2">
+              Download &amp; launch
+            </h3>
+            <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+              Grab the lightweight installer for Windows, macOS, or Linux. Opens in under a second.
+            </p>
+          </div>
+        </div>
 
-  <div class="dl-stack">
-    <a href="https://github.com/aunixboss-spec/Novaus-IDE/releases" target="_blank" class="dl-row ready">
-      <div class="dl-icon">
-        <span class="icon"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 5.5l7.5-1.05v7.05H3V5.5zm8.5-1.2L21 3v8.5h-9.5V4.3zM3 13h7.5v7.05L3 18.95V13zm8.5 0H21V21l-9.5-1.35V13z"/></svg></span>
-      </div>
-      <div class="dl-body">
-        <div class="dl-name">Windows</div>
-        <div class="dl-meta">10/11 x64 · Setup 1.0.0 · ~99 MB</div>
-      </div>
-      <span class="dl-action">Get</span>
-    </a>
-    <div class="dl-row">
-      <div class="dl-icon">
-        <span class="icon"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.22-1.98 1.08-3.13-1.05.05-2.31.7-3.06 1.58-.67.78-1.26 2.03-1.1 3.22 1.16.09 2.35-.66 3.08-1.67z"/></svg></span>
-      </div>
-      <div class="dl-body">
-        <div class="dl-name">macOS</div>
-        <div class="dl-meta">Coming soon</div>
-      </div>
-      <span class="dl-action disabled">Soon</span>
-    </div>
-    <div class="dl-row">
-      <div class="dl-icon">
-        <span class="icon"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.7-.53 1.438-.689 2.076-.163.64-.16 1.18-.123 1.584 0 .10.10.0.2.10.0.0.3.26.87.33.41.06.66.24.66.24s-.08.32-.1.5c-.21 1.07.12 2.07.72 2.07.31 0 .61-.17.91-.42.26.55.71 1.07 1.5 1.07.68 0 1.15-.38 1.48-.88.32.46.8.88 1.48.88.8 0 1.25-.52 1.51-1.07.3.25.6.42.91.42.6 0 .93-1 .72-2.07-.02-.18-.1-.5-.1-.5s.25-.18.66-.24c.48-.07.76-.19.87-.33.1-.14.16-.32.16-.54.04-.4.04-.94-.12-1.58-.16-.64-.41-1.38-.69-2.08-.59-1.77-1.83-3.47-2.72-4.52-.75-1.07-.97-1.93-1.05-3.02-.07-1.49 1.05-5.97-3.17-6.3C12.82.008 12.66 0 12.504 0zm-2.2 7.5c.4 0 .7.35.7.75s-.3.75-.7.75-.7-.35-.7-.75.3-.75.7-.75zm4.4 0c.4 0 .7.35.7.75s-.3.75-.7.75-.7-.35-.7-.75.3-.75.7-.75z"/></svg></span>
-      </div>
-      <div class="dl-body">
-        <div class="dl-name">Linux</div>
-        <div class="dl-meta">Coming soon</div>
-      </div>
-      <span class="dl-action disabled">Soon</span>
-    </div>
-  </div>
-</div>
+        <div class="p-7 sm:p-8 rounded-[6px] border border-white/[0.11] bg-black/75 backdrop-blur-sm hover:border-white/25 transition-colors flex flex-col justify-between min-h-[220px]">
+          <div class="font-mono text-xs text-zinc-500">02</div>
+          <div class="mt-8">
+            <h3 class="text-base sm:text-lg font-medium text-white mb-2">
+              Connect your keys
+            </h3>
+            <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+              Bring your own API key from Anthropic, OpenAI, Gemini, or local Ollama models.
+            </p>
+          </div>
+        </div>
 
-<footer>
-  <div class="footer-top">
-    <div class="footer-brand">
-      <a href="#" class="logo">
-        <div class="logo-mark">&lt;/&gt;</div>
-        Novaus
-      </a>
-      <p>Lightweight desktop IDE with AI agent and offline decompiler.</p>
-    </div>
-    <div class="footer-cols">
-      <div class="footer-col">
-        <h4>Product</h4>
-        <a href="#features">Features</a>
-        <a href="#ai">AI Copilot</a>
-        <a href="#decompiler">Decompiler</a>
-        <a href="#roadmap">Roadmap</a>
-        <a href="#download">Download</a>
+        <div class="p-7 sm:p-8 rounded-[6px] border border-white/[0.11] bg-black/75 backdrop-blur-sm hover:border-white/25 transition-colors flex flex-col justify-between min-h-[220px]">
+          <div class="font-mono text-xs text-zinc-500">03</div>
+          <div class="mt-8">
+            <h3 class="text-base sm:text-lg font-medium text-white mb-2">
+              Build &amp; inspect
+            </h3>
+            <p class="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+              Write code with inline agent diffs, run commands, and decompile binaries locally.
+            </p>
+          </div>
+        </div>
       </div>
-      <div class="footer-col">
-        <h4>Resources</h4>
-        <a href="https://github.com/aunixboss-spec/Novaus-IDE" target="_blank">GitHub</a>
-        <a href="https://github.com/aunixboss-spec/Novaus-IDE/releases" target="_blank">Releases</a>
-        <a href="https://github.com/aunixboss-spec/Novaus-IDE/blob/main/LICENSE" target="_blank">License</a>
-        <a href="#faq">FAQ</a>
-      </div>
-    </div>
-  </div>
-  <div class="footer-bottom">© 2026 Novaus · MIT</div>
-</footer>
 
-<script>
-  document.querySelectorAll('.faq-q').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const item = btn.parentElement;
-      const open = item.classList.contains('open');
-      document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
-      if (!open) item.classList.add('open');
+      <footer class="mt-28 pt-8 border-t border-white/[0.09] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-zinc-500">
+        <div class="flex items-center gap-2.5 text-zinc-300">
+          <span>&lt;/&gt;</span>
+          <span class="font-sans text-sm font-normal tracking-tight text-white">novaus</span>
+        </div>
+
+        <div class="flex items-center gap-6">
+          <a
+            href="https://github.com/aunixboss-spec"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="hover:text-white transition-colors"
+          >
+            GitHub
+          </a>
+          <button onclick="openDownloadModal()" class="hover:text-white transition-colors">
+            Download
+          </button>
+          <span>MIT License</span>
+        </div>
+      </footer>
+    </section>
+
+  </main>
+
+  <!-- ==================== SCRIPTS: UI & THREE.JS GLOSSY RAY-REFRACTED CRYSTAL ==================== -->
+  <script>
+    function openDownloadModal() {
+      const modal = document.getElementById('download-modal');
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
+    }
+
+    function closeDownloadModal() {
+      const modal = document.getElementById('download-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function startDownload(platformLabel) {
+      const status = document.getElementById('download-status');
+      if (status) {
+        status.textContent = `Preparing ${platformLabel} package... Check your browser downloads.`;
+        status.classList.remove('hidden');
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeDownloadModal();
     });
-  });
-</script>
+
+    function initScrollReveal() {
+      const reveals = document.querySelectorAll('.reveal');
+      if (!('IntersectionObserver' in window)) return;
+
+      reveals.forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top > window.innerHeight * 0.92) {
+          el.classList.add('reveal-pending');
+        }
+      });
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.remove('reveal-pending');
+              entry.target.classList.add('visible');
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.08 }
+      );
+
+      reveals.forEach((el) => observer.observe(el));
+    }
+
+    // -------------------------------------------------------------------------
+    // THREE.JS: HIGH-GLOSS RAY-REFRACTED CRYSTAL (PURE BLACK GLASS + CRISP SPECULARS)
+    // -------------------------------------------------------------------------
+    function initCrystalScene() {
+      const container = document.getElementById('webgl-container');
+      if (!container || typeof THREE === 'undefined') return;
+
+      const scene = new THREE.Scene();
+
+      const camera = new THREE.PerspectiveCamera(
+        38,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        100
+      );
+      camera.position.set(0, 0, 6.2);
+
+      const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        powerPreference: 'high-performance',
+      });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(renderer.domElement);
+
+      const noiseGLSL = `
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 permute(vec4 x) { return mod289(((x * 34.0) + 1.0) * x); }
+        vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+        float snoise(vec3 v) {
+          const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+          const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+          vec3 i  = floor(v + dot(v, C.yyy));
+          vec3 x0 = v - i + dot(i, C.xxx);
+          vec3 g = step(x0.yzx, x0.xyz);
+          vec3 l = 1.0 - g;
+          vec3 i1 = min(g.xyz, l.zxy);
+          vec3 i2 = max(g.xyz, l.zxy);
+          vec3 x1 = x0 - i1 + C.xxx;
+          vec3 x2 = x0 - i2 + C.yyy;
+          vec3 x3 = x0 - D.yyy;
+          i = mod289(i);
+          vec4 p = permute(permute(permute(
+                    i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                  + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                  + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+          float n_ = 0.142857142857;
+          vec3 ns = n_ * D.wyz - D.xzx;
+          vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+          vec4 x_ = floor(j * ns.z);
+          vec4 y_ = floor(j - 7.0 * x_);
+          vec4 x = x_ * ns.x + ns.yyyy;
+          vec4 y = y_ * ns.x + ns.yyyy;
+          vec4 h = 1.0 - abs(x) - abs(y);
+          vec4 b0 = vec4(x.xy, y.xy);
+          vec4 b1 = vec4(x.zw, y.zw);
+          vec4 s0 = floor(b0) * 2.0 + 1.0;
+          vec4 s1 = floor(b1) * 2.0 + 1.0;
+          vec4 sh = -step(h, vec4(0.0));
+          vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+          vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+          vec3 p0 = vec3(a0.xy, h.x);
+          vec3 p1 = vec3(a0.zw, h.y);
+          vec3 p2 = vec3(a1.xy, h.z);
+          vec3 p3 = vec3(a1.zw, h.w);
+          vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+          p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+          vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+          m = m * m;
+          return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+        }
+
+        float hashGrain(vec2 p) {
+          return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+        }
+      `;
+
+      // -----------------------------------------------------------------------
+      // CLEAN POLYHEDRAL GEMSTONE GEOMETRY
+      // -----------------------------------------------------------------------
+      function createGlossyCrystalGeometry() {
+        const V = {
+          topApex:    new THREE.Vector3(-0.07,  2.05,  0.04),
+          topRight:   new THREE.Vector3( 0.44,  1.72,  0.14),
+          upLeftOut:  new THREE.Vector3(-0.98,  1.06,  0.12),
+          upLeftIn:   new THREE.Vector3(-0.16,  1.32,  0.66),
+          upMidTop:   new THREE.Vector3( 0.48,  1.45,  0.42),
+          upRightOut: new THREE.Vector3( 0.72,  1.15, -0.08),
+
+          shLeftOut:  new THREE.Vector3(-1.12,  0.62, -0.05),
+          shLeftIn:   new THREE.Vector3(-0.88,  0.54,  0.48),
+          shRightIn:  new THREE.Vector3( 0.84,  0.52,  0.44),
+          shRightOut: new THREE.Vector3( 1.04,  0.55, -0.10),
+
+          gdLeftOut:  new THREE.Vector3(-1.26, -0.32, -0.06),
+          gdLeftIn:   new THREE.Vector3(-1.08, -0.58,  0.46),
+          gdRightIn:  new THREE.Vector3( 1.06, -0.54,  0.46),
+          gdRightOut: new THREE.Vector3( 1.24, -0.46, -0.05),
+
+          pvLeftOut:  new THREE.Vector3(-0.92, -1.04,  0.08),
+          pvLeftIn:   new THREE.Vector3(-0.56, -1.18,  0.44),
+          pvRightIn:  new THREE.Vector3( 0.56, -1.24,  0.42),
+          pvRightOut: new THREE.Vector3( 0.94, -1.02,  0.05),
+
+          botApex:    new THREE.Vector3(-0.05, -2.02,  0.04),
+
+          bkTop:      new THREE.Vector3(-0.04,  1.35, -0.68),
+          bkMidLeft:  new THREE.Vector3(-0.82,  0.10, -0.74),
+          bkMidRight: new THREE.Vector3( 0.82,  0.10, -0.74),
+          bkLow:      new THREE.Vector3(-0.04, -1.15, -0.66),
+        };
+
+        const facetDefs = [
+          [V.topApex, V.upLeftOut, V.shLeftIn, V.upLeftIn],
+          [V.topApex, V.upLeftIn, V.upMidTop, V.topRight],
+          [V.topApex, V.topRight, V.upRightOut],
+          [V.upLeftIn, V.shLeftIn, V.shRightIn, V.upMidTop],
+          [V.upMidTop, V.shRightIn, V.upRightOut],
+          [V.shLeftIn, V.gdLeftIn, V.gdRightIn, V.shRightIn],
+          [V.upLeftOut, V.shLeftOut, V.shLeftIn],
+          [V.shLeftOut, V.gdLeftOut, V.gdLeftIn, V.shLeftIn],
+          [V.gdLeftOut, V.pvLeftOut, V.pvLeftIn, V.gdLeftIn],
+          [V.upRightOut, V.shRightIn, V.shRightOut],
+          [V.shRightIn, V.gdRightIn, V.gdRightOut, V.shRightOut],
+          [V.gdRightIn, V.pvRightIn, V.pvRightOut, V.gdRightOut],
+          [V.gdLeftIn, V.pvLeftIn, V.pvRightIn, V.gdRightIn],
+          [V.pvLeftOut, V.botApex, V.pvLeftIn],
+          [V.pvLeftIn, V.botApex, V.pvRightIn],
+          [V.pvRightIn, V.botApex, V.pvRightOut],
+          [V.topApex, V.bkTop, V.upLeftOut],
+          [V.topApex, V.upRightOut, V.bkTop],
+          [V.upLeftOut, V.bkTop, V.bkMidLeft, V.shLeftOut],
+          [V.shLeftOut, V.bkMidLeft, V.gdLeftOut],
+          [V.gdLeftOut, V.bkMidLeft, V.bkLow, V.pvLeftOut],
+          [V.pvLeftOut, V.bkLow, V.botApex],
+          [V.upRightOut, V.shRightOut, V.bkMidRight, V.bkTop],
+          [V.shRightOut, V.gdRightOut, V.bkMidRight],
+          [V.gdRightOut, V.pvRightOut, V.bkLow, V.bkMidRight],
+          [V.pvRightOut, V.botApex, V.bkLow],
+          [V.bkTop, V.bkMidRight, V.bkLow, V.bkMidLeft],
+        ];
+
+        const positions = [];
+        const facetIds = [];
+        const facetNormals = [];
+
+        function pushTriangle(a, b, c, fId, fNormal) {
+          positions.push(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z);
+          facetIds.push(fId, fId, fId);
+          facetNormals.push(
+            fNormal.x, fNormal.y, fNormal.z,
+            fNormal.x, fNormal.y, fNormal.z,
+            fNormal.x, fNormal.y, fNormal.z
+          );
+        }
+
+        function pushSubdividedTriangle(vA, vB, vC, fId, fNormal, steps) {
+          for (let i = 0; i < steps; i++) {
+            for (let j = 0; j < steps - i; j++) {
+              const u0 = i / steps, v0 = j / steps;
+              const u1 = (i + 1) / steps, v1 = j / steps;
+              const u2 = i / steps, v2 = (j + 1) / steps;
+
+              const p0 = new THREE.Vector3().addScaledVector(vA, 1 - u0 - v0).addScaledVector(vB, u0).addScaledVector(vC, v0);
+              const p1 = new THREE.Vector3().addScaledVector(vA, 1 - u1 - v1).addScaledVector(vB, u1).addScaledVector(vC, v1);
+              const p2 = new THREE.Vector3().addScaledVector(vA, 1 - u2 - v2).addScaledVector(vB, u2).addScaledVector(vC, v2);
+
+              pushTriangle(p0, p1, p2, fId, fNormal);
+
+              if (i + j < steps - 1) {
+                const u3 = (i + 1) / steps, v3 = (j + 1) / steps;
+                const p3 = new THREE.Vector3().addScaledVector(vA, 1 - u3 - v3).addScaledVector(vB, u3).addScaledVector(vC, v3);
+                pushTriangle(p1, p3, p2, fId, fNormal);
+              }
+            }
+          }
+        }
+
+        const SUBDIV = 12;
+
+        facetDefs.forEach((pts, idx) => {
+          const fNormal = new THREE.Vector3()
+            .subVectors(pts[1], pts[0])
+            .cross(new THREE.Vector3().subVectors(pts[2], pts[0]))
+            .normalize();
+
+          const centroid = new THREE.Vector3();
+          pts.forEach((p) => centroid.add(p));
+          centroid.divideScalar(pts.length);
+          if (fNormal.dot(centroid) < 0) {
+            fNormal.negate();
+          }
+
+          for (let k = 1; k < pts.length - 1; k++) {
+            pushSubdividedTriangle(pts[0], pts[k], pts[k + 1], idx, fNormal, SUBDIV);
+          }
+        });
+
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.setAttribute('aFacetId', new THREE.Float32BufferAttribute(facetIds, 1));
+        geo.setAttribute('aFacetNormal', new THREE.Float32BufferAttribute(facetNormals, 3));
+        geo.computeVertexNormals();
+        return geo;
+      }
+
+      const crystalGeo = createGlossyCrystalGeometry();
+
+      const crystalUniforms = {
+        uTime: { value: 0 },
+        uMorph: { value: 0.0 },
+        uScale: { value: 1.05 },
+        uOpacity: { value: 1.0 },
+      };
+
+      const crystalMat = new THREE.ShaderMaterial({
+        uniforms: crystalUniforms,
+        transparent: true,
+        side: THREE.DoubleSide,
+        extensions: {
+          derivatives: true
+        },
+        vertexShader: `
+          attribute float aFacetId;
+          attribute vec3 aFacetNormal;
+
+          uniform float uTime;
+          uniform float uMorph;
+          uniform float uScale;
+
+          varying vec3 vWorldPos;
+          varying vec3 vViewDir;
+          varying vec3 vSmoothNormal;
+          varying vec3 vFacetNormal;
+          varying vec3 vLocalPos;
+          varying vec3 vLocalFacetNormal;
+          varying float vFacetId;
+          varying float vHarmonic;
+          varying float vMorph;
+
+          ${noiseGLSL}
+
+          float symphonicField(vec3 dir, float t) {
+            float h1 = sin(dir.y * 5.0 + t * 1.15) * cos(dir.x * 4.0 - t * 0.85);
+            float h2 = sin((dir.x + dir.z) * 6.5 - t * 1.45) * 0.55;
+            float h3 = cos((dir.y - dir.z) * 8.0 + t * 1.85) * 0.30;
+            float organic = snoise(dir * 1.85 + vec3(t * 0.28, -t * 0.24, t * 0.22)) * 0.65;
+            return (h1 * 0.42 + h2 * 0.32 + h3 * 0.22 + organic * 0.55);
+          }
+
+          void main() {
+            vFacetId = aFacetId;
+            vLocalPos = position;
+            vLocalFacetNormal = normalize(aFacetNormal);
+
+            // Более плавная и мягкая кривая smoothstep для морфинга
+            float sm = clamp(uMorph, 0.0, 1.0);
+            float m = sm * sm * (3.0 - 2.0 * sm);
+
+            vec3 dir = normalize(position);
+            float h = symphonicField(dir, uTime);
+            vHarmonic = h;
+
+            float breath = 1.0 + sin(uTime * 1.25) * 0.035;
+            vec3 corePos = dir * (1.06 * breath + h * 0.19);
+
+            float eps = 0.025;
+            vec3 up = abs(dir.y) < 0.99 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+            vec3 tangent = normalize(cross(up, dir));
+            vec3 bitangent = cross(dir, tangent);
+
+            vec3 d1 = normalize(dir + tangent * eps);
+            vec3 d2 = normalize(dir + bitangent * eps);
+            vec3 p0 = dir * (1.06 * breath + h * 0.19);
+            vec3 p1 = d1 * (1.06 * breath + symphonicField(d1, uTime) * 0.19);
+            vec3 p2 = d2 * (1.06 * breath + symphonicField(d2, uTime) * 0.19);
+            vec3 orbNormal = normalize(cross(p1 - p0, p2 - p0));
+
+            vMorph = m;
+
+            vec3 finalPos = mix(position, corePos, m);
+            finalPos *= 1.0 + sin(m * 3.14159265) * 0.07;
+            finalPos *= uScale;
+
+            vec4 worldPos = modelMatrix * vec4(finalPos, 1.0);
+            vWorldPos = worldPos.xyz;
+            vViewDir = normalize(cameraPosition - worldPos.xyz);
+            vFacetNormal = normalize(normalMatrix * aFacetNormal);
+            vSmoothNormal = normalize(normalMatrix * orbNormal);
+
+            gl_Position = projectionMatrix * viewMatrix * worldPos;
+          }
+        `,
+        fragmentShader: `
+          uniform float uTime;
+          uniform float uMorph;
+          uniform float uOpacity;
+
+          varying vec3 vWorldPos;
+          varying vec3 vViewDir;
+          varying vec3 vSmoothNormal;
+          varying vec3 vFacetNormal;
+          varying vec3 vLocalPos;
+          varying vec3 vLocalFacetNormal;
+          varying float vFacetId;
+          varying float vHarmonic;
+          varying float vMorph;
+
+          ${noiseGLSL}
+
+          vec3 sampleGlossyStudio(vec3 dir) {
+            vec3 d = normalize(dir);
+            vec3 col = vec3(0.002, 0.0025, 0.004);
+
+            float dTopLeft = dot(d, normalize(vec3(-0.62, 0.62, 0.48)));
+            float topLeftPanel = smoothstep(0.76, 0.785, dTopLeft);
+            float topLeftHotCore = smoothstep(0.91, 0.94, dTopLeft);
+            col += vec3(0.74, 0.86, 0.96) * topLeftPanel * 1.15;
+            col += vec3(1.0, 1.0, 1.0) * topLeftHotCore * 1.35;
+
+            float dBotRight = dot(d, normalize(vec3(0.68, -0.58, 0.44)));
+            float botRightStrip = smoothstep(0.80, 0.825, dBotRight);
+            col += vec3(0.96, 0.98, 1.0) * botRightStrip * 1.65;
+
+            float dLeftRim = dot(d, normalize(vec3(-0.88, -0.08, 0.46)));
+            float leftRimPanel = smoothstep(0.84, 0.865, dLeftRim);
+            col += vec3(0.82, 0.90, 0.98) * leftRimPanel * 1.25;
+
+            float dBackLav = dot(d, normalize(vec3(0.32, -0.36, -0.87)));
+            float backLavPanel = smoothstep(0.82, 0.85, dBackLav);
+            col += vec3(0.58, 0.46, 0.88) * backLavPanel * 0.95;
+
+            float pin1 = pow(max(0.0, dot(d, normalize(vec3(-0.18, 0.92, 0.34)))), 180.0);
+            float pin2 = pow(max(0.0, dot(d, normalize(vec3(0.22, -0.91, 0.35)))), 160.0);
+            float pin3 = pow(max(0.0, dot(d, normalize(vec3(-0.78, 0.44, 0.44)))), 140.0);
+            col += vec3(1.0) * (pin1 * 2.2 + pin2 * 2.0 + pin3 * 1.8);
+
+            return col;
+          }
+
+          vec3 traceCrystalRay(vec3 pos, vec3 viewDir, float ior) {
+            vec3 N = normalize(vFacetNormal);
+            vec3 I = -normalize(viewDir);
+
+            float cosTheta = clamp(dot(-I, N), 0.0, 1.0);
+            float f0 = pow((1.0 - ior) / (1.0 + ior), 2.0);
+            float fresnel = f0 + (1.0 - f0) * pow(1.0 - cosTheta, 5.0);
+
+            vec3 reflDir = reflect(I, N);
+            vec3 extReflection = sampleGlossyStudio(reflDir);
+
+            vec3 refrDir = refract(I, N, 1.0 / ior);
+            if (length(refrDir) < 0.001) {
+              return extReflection;
+            }
+
+            vec3 invScale = vec3(1.0 / 1.18, 1.0 / 1.98, 1.0 / 0.72);
+            vec3 p = vLocalPos * invScale;
+            vec3 d = normalize(refrDir * invScale);
+
+            float b = dot(p, d);
+            float c = dot(p, p) - 1.0;
+            float disc = max(0.0, b * b - c);
+            float tHit = max(0.05, -b + sqrt(disc));
+
+            vec3 hitPos = (p + d * tHit) / invScale;
+
+            // NaN guards: a ray passing near the origin would normalize a
+            // near-zero vector and produce random sparkle artifacts
+            vec3 nRaw = hitPos * invScale * invScale;
+            float nLen = max(length(nRaw), 0.0001);
+            vec3 innerN = nRaw / nLen;
+            vec3 facetQuant = floor(hitPos * 2.2 + 0.5) / 2.2;
+            vec3 fqDir = facetQuant + vec3(0.0, 0.0, -0.4);
+            float fqLen = max(length(fqDir), 0.0001);
+            innerN = normalize(mix(innerN, fqDir / fqLen, 0.55));
+
+            vec3 internalBounceDir = reflect(refrDir, -innerN);
+            vec3 intReflection = sampleGlossyStudio(internalBounceDir);
+
+            float opticalPath = tHit * 1.45;
+            vec3 absorption = exp(-vec3(2.8, 2.9, 2.5) * opticalPath);
+
+            return extReflection * (0.28 + 0.92 * fresnel) + intReflection * absorption * (1.0 - fresnel) * 0.85;
+          }
+
+          void main() {
+            float m = vMorph;
+
+            vec3 N = normalize(mix(normalize(vFacetNormal), normalize(vSmoothNormal), smoothstep(0.05, 0.95, m)));
+            vec3 V = normalize(vViewDir);
+            float NdotV = max(dot(N, V), 0.0);
+            float fresnel = pow(1.0 - NdotV, 4.0);
+
+            vec3 dN = fwidth(N);
+            float edgeMag = length(dN);
+
+            // Crystal shading (expensive ray tracing) is skipped once the
+            // shape has fully become the sphere — removes stray artifacts there
+            vec3 crystalColor = vec3(0.0);
+            if (m < 0.985) {
+              float iorR = 2.12;
+              float iorG = 2.17;
+              float iorB = 2.23;
+
+              vec3 colR = traceCrystalRay(vLocalPos, V, iorR);
+              vec3 colG = traceCrystalRay(vLocalPos, V, iorG);
+              vec3 colB = traceCrystalRay(vLocalPos, V, iorB);
+
+              crystalColor = vec3(colR.r, colG.g, colB.b);
+
+              vec3 keyLight = normalize(vec3(-0.55, 0.65, 0.52));
+              vec3 H = normalize(keyLight + V);
+              float glossySpec = pow(max(dot(N, H), 0.0), 220.0);
+              crystalColor += vec3(1.0) * glossySpec * 1.65 * (1.0 - m);
+
+              vec3 rimLight = normalize(vec3(0.65, -0.58, 0.48));
+              vec3 H2 = normalize(rimLight + V);
+              float rimSpec = pow(max(dot(N, H2), 0.0), 180.0);
+              crystalColor += vec3(0.95, 0.98, 1.0) * rimSpec * 1.45 * (1.0 - m);
+
+              float crispEdge = smoothstep(0.06, 0.50, edgeMag) * (1.0 - m);
+              crystalColor += vec3(0.92, 0.96, 1.0) * crispEdge * (0.45 + 0.55 * fresnel);
+
+              crystalColor += vec3(0.85, 0.92, 1.0) * pow(1.0 - NdotV, 4.5) * 0.42 * (1.0 - m);
+            }
+
+            float waveCrest = smoothstep(-0.25, 0.45, vHarmonic);
+            float acousticRing = pow(0.5 + 0.5 * sin(vHarmonic * 11.0 - uTime * 1.6), 2.4);
+            vec3 orbCoreGlow = mix(vec3(0.04, 0.05, 0.08), vec3(0.78, 0.85, 1.0), waveCrest * 0.55 + fresnel * 0.75);
+            vec3 orbHarmonicShimmer = mix(vec3(0.52, 0.44, 0.84), vec3(0.86, 0.93, 1.0), acousticRing) * acousticRing * 0.34;
+            vec3 orbRim = vec3(0.92, 0.96, 1.0) * pow(1.0 - NdotV, 2.4) * 0.85;
+            vec3 symphonicOrbColor = orbCoreGlow + orbHarmonicShimmer + orbRim;
+
+            vec3 finalCol = mix(crystalColor, symphonicOrbColor, smoothstep(0.15, 0.85, m));
+
+            float transGlow = sin(clamp(m, 0.0, 1.0) * 3.14159265);
+            finalCol += vec3(0.80, 0.87, 1.0) * transGlow * (0.16 + 0.42 * fresnel);
+
+            finalCol = finalCol / (1.0 + finalCol * 0.18);
+            finalCol = pow(max(finalCol, vec3(0.0)), vec3(0.96));
+
+            float grain = (hashGrain(gl_FragCoord.xy + fract(uTime * 0.25) * 50.0) - 0.5) * 0.014;
+            finalCol = clamp(finalCol + grain, 0.0, 1.0);
+
+            float alpha = clamp(0.96 + fresnel * 0.04 + m * 0.04, 0.0, 1.0) * uOpacity;
+            gl_FragColor = vec4(finalCol, alpha);
+          }
+        `,
+      });
+
+      const crystalMesh = new THREE.Mesh(crystalGeo, crystalMat);
+      scene.add(crystalMesh);
+
+      // -----------------------------------------------------------------------
+      // TRANSLUCENT GRAINY CUBE FOR SECTION 3
+      // -----------------------------------------------------------------------
+      const cubeGroup = new THREE.Group();
+      const boxGeo = new THREE.BoxGeometry(2.55, 2.55, 2.55);
+
+      const cubeUniforms = {
+        uTime: { value: 0 },
+        uOpacity: { value: 0.0 },
+      };
+
+      const cubeMat = new THREE.ShaderMaterial({
+        uniforms: cubeUniforms,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        vertexShader: `
+          varying vec3 vNormal;
+          varying vec3 vViewDir;
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            vec4 wp = modelMatrix * vec4(position, 1.0);
+            vNormal = normalize(normalMatrix * normal);
+            vViewDir = normalize(cameraPosition - wp.xyz);
+            gl_Position = projectionMatrix * viewMatrix * wp;
+          }
+        `,
+        fragmentShader: `
+          uniform float uTime;
+          uniform float uOpacity;
+          varying vec3 vNormal;
+          varying vec3 vViewDir;
+          varying vec2 vUv;
+
+          ${noiseGLSL}
+
+          void main() {
+            if (uOpacity <= 0.001) discard;
+            vec3 N = normalize(vNormal);
+            vec3 V = normalize(vViewDir);
+            float fres = pow(1.0 - abs(dot(N, V)), 1.9);
+
+            vec2 edge = smoothstep(0.0, 0.025, vUv) * smoothstep(0.0, 0.025, 1.0 - vUv);
+            float border = 1.0 - (edge.x * edge.y);
+
+            float grain = hashGrain(gl_FragCoord.xy + fract(uTime * 0.3) * 40.0);
+            float alpha = (0.03 + fres * 0.14 + border * 0.32) * (0.7 + 0.3 * grain);
+
+            gl_FragColor = vec4(vec3(0.9), alpha * uOpacity);
+          }
+        `,
+      });
+
+      const cubeMesh = new THREE.Mesh(boxGeo, cubeMat);
+      cubeGroup.add(cubeMesh);
+
+      const edgesGeo = new THREE.EdgesGeometry(boxGeo);
+      const edgesMat = new THREE.LineBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.0,
+      });
+      cubeGroup.add(new THREE.LineSegments(edgesGeo, edgesMat));
+      scene.add(cubeGroup);
+
+      // -----------------------------------------------------------------------
+      // FAINT ATMOSPHERIC DUST MOTES
+      // -----------------------------------------------------------------------
+      const dustCount = 180;
+      const dustGeo = new THREE.BufferGeometry();
+      const dustPos = new Float32Array(dustCount * 3);
+      for (let i = 0; i < dustCount; i++) {
+        const radius = 0.9 + Math.random() * 4.5;
+        const theta = Math.random() * Math.PI * 2;
+        dustPos[i * 3] = Math.cos(theta) * radius;
+        dustPos[i * 3 + 1] = (Math.random() - 0.5) * 7.5;
+        dustPos[i * 3 + 2] = (Math.random() - 0.5) * 4.0 - 0.5;
+      }
+      dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+
+      const dustMat = new THREE.PointsMaterial({
+        color: 0xffffff,
+        size: 0.018,
+        transparent: true,
+        opacity: 0.25,
+      });
+      const dustPoints = new THREE.Points(dustGeo, dustMat);
+      scene.add(dustPoints);
+
+      // -----------------------------------------------------------------------
+      // FOOTER PARTICLE WAVE HORIZON
+      // -----------------------------------------------------------------------
+      const cols = 84;
+      const rows = 36;
+      const waveGeo = new THREE.BufferGeometry();
+      const wavePositions = new Float32Array(cols * rows * 3);
+      let idx = 0;
+      for (let ix = 0; ix < cols; ix++) {
+        for (let iz = 0; iz < rows; iz++) {
+          wavePositions[idx++] = (ix / (cols - 1) - 0.5) * 15.0;
+          wavePositions[idx++] = 0;
+          wavePositions[idx++] = (iz / (rows - 1) - 0.5) * 6.5;
+        }
+      }
+      waveGeo.setAttribute('position', new THREE.BufferAttribute(wavePositions, 3));
+
+      const waveUniforms = {
+        uTime: { value: 0 },
+        uOpacity: { value: 0.0 },
+      };
+
+      const waveMat = new THREE.ShaderMaterial({
+        uniforms: waveUniforms,
+        transparent: true,
+        depthWrite: false,
+        vertexShader: `
+          uniform float uTime;
+          varying float vY;
+          varying float vDist;
+          void main() {
+            vec3 p = position;
+            p.y = sin(p.x * 0.55 + uTime * 0.8) * cos(p.z * 0.6 + uTime * 0.55) * 0.36;
+            vY = p.y;
+            vec4 mv = modelViewMatrix * vec4(p, 1.0);
+            vDist = -mv.z;
+            gl_PointSize = clamp(12.0 / vDist, 1.0, 2.6);
+            gl_Position = projectionMatrix * mv;
+          }
+        `,
+        fragmentShader: `
+          uniform float uOpacity;
+          varying float vY;
+          varying float vDist;
+          void main() {
+            if (uOpacity <= 0.001) discard;
+            vec2 c = 2.0 * gl_PointCoord - 1.0;
+            if (dot(c, c) > 1.0) discard;
+            float fade = smoothstep(12.0, 3.0, vDist);
+            gl_FragColor = vec4(vec3(1.0), uOpacity * fade * (0.35 + 0.65 * smoothstep(-0.35, 0.35, vY)));
+          }
+        `,
+      });
+
+      const waveMesh = new THREE.Points(waveGeo, waveMat);
+      waveMesh.position.set(0, -1.65, 0.4);
+      waveMesh.rotation.x = 0.24;
+      scene.add(waveMesh);
+
+      // -----------------------------------------------------------------------
+      // SCROLL & MOUSE DAMPING (Более плавный интерполятор скролла)
+      // -----------------------------------------------------------------------
+      let targetScroll = 0;
+      let currentScroll = 0;
+      let mouseX = 0;
+      let mouseY = 0;
+      let smoothMouseX = 0;
+      let smoothMouseY = 0;
+
+      function onScroll() {
+        const maxS = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+        targetScroll = Math.min(1, Math.max(0, window.scrollY / maxS));
+      }
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+
+      const anchors = { morphStart: 0.10, morphEnd: 0.45, focusIn: 0.55, focusOut: 0.80 };
+
+      function computeAnchors() {
+        const maxS = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+        const vh = window.innerHeight;
+        const wb = document.getElementById('workbench');
+        const fo = document.getElementById('focus');
+        const dp = document.getElementById('deep-work');
+        if (!wb || !fo || !dp) return;
+        const frac = (el, vhMul) => Math.min(1, Math.max(0, (el.offsetTop - vh * vhMul) / maxS));
+
+        // Морфинг стартует, когда секция колонок только входит снизу, и завершается
+        // к моменту её центрирования — за текстом уже чистый шар, а не полукристалл
+        anchors.morphStart = frac(wb, 0.9);
+        anchors.morphEnd = frac(wb, 0.35);
+        if (anchors.morphEnd < anchors.morphStart + 0.18) {
+          anchors.morphEnd = anchors.morphStart + 0.18;
+        }
+        anchors.focusIn = frac(fo, 0.5);
+        if (anchors.focusIn < anchors.morphEnd + 0.05) {
+          anchors.focusIn = anchors.morphEnd + 0.05;
+        }
+        anchors.focusOut = frac(dp, 0.5);
+        if (anchors.focusOut < anchors.focusIn + 0.05) {
+          anchors.focusOut = anchors.focusIn + 0.05;
+        }
+      }
+
+      computeAnchors();
+      setTimeout(computeAnchors, 400);
+
+      window.addEventListener('mousemove', (e) => {
+        mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+        mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+      }, { passive: true });
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        computeAnchors();
+      });
+
+      function smoothstep(e0, e1, x) {
+        const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0)));
+        return t * t * (3 - 2 * t);
+      }
+
+      const clock = new THREE.Clock();
+
+      function animate() {
+        requestAnimationFrame(animate);
+        const t = clock.getElapsedTime();
+
+        // Уменьшенный коэффициент интерполяции для максимальной плавности при быстром скролле
+        currentScroll += (targetScroll - currentScroll) * 0.035;
+        smoothMouseX += (mouseX - smoothMouseX) * 0.05;
+        smoothMouseY += (mouseY - smoothMouseY) * 0.05;
+
+        const morphToCore = smoothstep(anchors.morphStart, anchors.morphEnd, currentScroll);
+        const midDim = smoothstep(anchors.morphEnd, anchors.morphEnd + 0.04, currentScroll) *
+                       (1.0 - smoothstep(anchors.focusIn - 0.08, anchors.focusIn, currentScroll));
+        const footerPhase = smoothstep(anchors.focusOut, anchors.focusOut + 0.08, currentScroll);
+        const crystalVisibility = (1.0 - 0.75 * midDim) * (1.0 - footerPhase);
+        const cubeShow = smoothstep(anchors.focusIn - 0.05, anchors.focusIn, currentScroll) *
+                         (1.0 - smoothstep(anchors.focusOut - 0.03, anchors.focusOut, currentScroll));
+
+        crystalUniforms.uTime.value = t;
+        crystalUniforms.uMorph.value = morphToCore;
+        // Once fully a sphere, render front side only — back faces no longer
+        // flicker behind the surface (classic DoubleSide transparency artifact)
+        crystalMat.side = morphToCore > 0.985 ? THREE.FrontSide : THREE.DoubleSide;
+        const easedMorph = morphToCore * morphToCore * (3.0 - 2.0 * morphToCore);
+        // Шар дополнительно уменьшается и уходит вглубь за текстовыми секциями
+        crystalUniforms.uScale.value = (1.05 - 0.34 * easedMorph) * (1.0 - footerPhase * 0.5) * (1.0 - 0.18 * midDim);
+        crystalUniforms.uOpacity.value = crystalVisibility;
+        crystalMesh.visible = crystalVisibility > 0.005;
+
+        crystalMesh.position.y = Math.sin(t * 0.9) * 0.045 + footerPhase * 1.6;
+
+        const heroIdleYaw = Math.sin(t * 0.45) * 0.07;
+        crystalMesh.rotation.y = heroIdleYaw * (1.0 - morphToCore) + (t * 0.25 + currentScroll * 2.8) * morphToCore + smoothMouseX * 0.26;
+        crystalMesh.rotation.x = Math.sin(t * 0.35) * 0.035 + smoothMouseY * 0.16;
+        crystalMesh.rotation.z = Math.cos(t * 0.3) * 0.02;
+
+        // Cube for Section 3
+        cubeUniforms.uTime.value = t;
+        cubeUniforms.uOpacity.value = cubeShow;
+        cubeGroup.visible = cubeShow > 0.005;
+        edgesMat.opacity = cubeShow * 0.36;
+        cubeGroup.position.y = crystalMesh.position.y;
+        cubeGroup.rotation.x = 0.56 + smoothMouseY * 0.2;
+        cubeGroup.rotation.y = 0.76 + t * 0.12 + smoothMouseX * 0.28;
+
+        // Dust motes
+        dustPoints.rotation.y = t * 0.018 + smoothMouseX * 0.06;
+        dustMat.opacity = 0.25 * crystalVisibility;
+
+        // Footer wave
+        waveUniforms.uTime.value = t;
+        waveUniforms.uOpacity.value = footerPhase * 0.55;
+
+        renderer.render(scene, camera);
+      }
+
+      animate();
+    }
+
+    function dismissPreloader() {
+      const preloader = document.getElementById('preloader');
+      if (preloader && !preloader.dataset.dismissed) {
+        preloader.dataset.dismissed = 'true';
+        preloader.classList.add('opacity-0', 'pointer-events-none');
+        setTimeout(() => preloader.remove(), 700);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initScrollReveal();
+      setTimeout(dismissPreloader, 850);
+    });
+
+    window.onload = function () {
+      initCrystalScene();
+      setTimeout(dismissPreloader, 750);
+    };
+  </script>
 </body>
 </html>
